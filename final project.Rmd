@@ -15,6 +15,8 @@ library(maps)
 library(plotly)
 library(rnaturalearth)
 library(sf)
+library(RColorBrewer)
+library(car)
 ```
 
 # Clean the data
@@ -51,22 +53,30 @@ print(meteorite_data_with_continents)
 
 # Make the location based on the map
 ```{r}
-map <- plot_ly(
-  data = meteorite_data,
-  type = 'scattermapbox',
-  lat = ~reclat,
-  lon = ~reclong,
-  mode = 'markers',
-  marker = list(size = 4, color = 'blue', opacity = 0.5),
-  text = ~paste("Name:", name, "<br>Year:", year, "<br>Mass:", mass)
-)
+continents <- unique(meteorite_data_with_continents$continent)
+color_palette <- setNames(brewer.pal(length(continents), "Set1"), continents)
+map <- plot_ly(type = 'scattermapbox', mode = 'markers')
+for (cont in continents) {
+  continent_data <- subset(meteorite_data_with_continents, continent == cont)
+  map <- map %>%
+    add_trace(
+      data = continent_data,
+      lat = ~reclat,
+      lon = ~reclong,
+      marker = list(size = 4, color = color_palette[cont]),
+      text = ~paste("Name:", name, "<br>Year:", year, "<br>Mass:", mass, "<br>Continent:", continent),
+      name = cont
+    )
+}
 map <- map %>%
   layout(
-    title = 'Global Distribution of Meteorite Landings (1399-2013)',
+    title = 'Global Distribution of Meteorite Landings by Continent (1970-2013)',
     mapbox = list(
-      style = "carto-positron",
-      zoom = 1
-    )
+      style = "open-street-map",
+      zoom = 1,
+      center = list(lat = 0, lon = 0)
+    ),
+    legend = list(title = list(text = "Continent"))
   )
 map
 ```
@@ -102,7 +112,6 @@ line_plot_by_continent
 ```{r}
 meteorite_data_with_continents$continent <- as.factor(meteorite_data_with_continents$continent)
 # Run Levene's Test with continent as a factor
-library(car)
 levene_test <- leveneTest(mass ~ continent, data = meteorite_data_with_continents)
 print(levene_test)
 ```
