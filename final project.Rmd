@@ -1,8 +1,8 @@
 ---
 title: "final project"
-author: "Zitao Zhang"
+author: "Zitao Zhang, Yi Su, Jiayi Ge"
 date: "`r Sys.Date()`"
-output: html_document
+output: github_document
 ---
 
 ```{r setup, include=FALSE}
@@ -18,7 +18,7 @@ library(sf)
 ```
 
 ```{r}
-meteorite_data <- read.csv("meteorite-landings.csv")
+meteorite_data <- read.csv("data/meteorite-landings.csv")
 
 meteorite_data <- meteorite_data %>% 
   clean_names() %>%
