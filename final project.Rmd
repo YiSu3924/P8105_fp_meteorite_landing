@@ -171,3 +171,60 @@ final_table
 Variations in Land Area: Different continents have different land areas, which may affect the probability of meteorites being found and recorded. Larger continents may have more land to catch falling meteorites, resulting in larger finds and potentially heavier meteorites being discovered.
 
 Data Quality and Collection Bias: Differences in meteorite mass across continents may also result from data quality and collection bias. Factors such as population density, exploration frequency, geological and environmental conditions, and scientific interest can all impact the likelihood of discovering and recording meteorites.
+
+# Simple Linear Regression
+
+```{r}
+future_years <- data.frame(year = 2014:2050)
+
+predicted_landings <- yearly_landings %>%
+  group_by(continent) %>%
+  do({
+    model <- lm(count ~ poly(year, 2), data = .)
+    future_data <- future_years
+    future_data$continent <- unique(.$continent)
+    future_data$predicted_count <- predict(model, newdata = future_data)
+    future_data$predicted_count <- pmax(future_data$predicted_count, 0)
+    future_data
+  }) %>%
+  ungroup()
+
+observed_data <- yearly_landings %>%
+  rename(observed_count = count)
+
+all_landings <- observed_data %>%
+  full_join(predicted_landings, by = c("year", "continent")) %>%
+  mutate(count = ifelse(!is.na(observed_count), observed_count, predicted_count))
+
+line_plot_with_polynomial <- plot_ly() %>%
+  add_trace(
+    data = all_landings %>% filter(!is.na(observed_count)),
+    x = ~year,
+    y = ~observed_count,
+    type = 'scatter',
+    mode = 'lines+markers',
+    color = ~continent,
+    legendgroup = ~continent,
+    name = ~continent
+  ) %>%
+  add_trace(
+    data = all_landings %>% filter(!is.na(predicted_count)),
+    x = ~year,
+    y = ~predicted_count,
+    type = 'scatter',
+    mode = 'lines',
+    color = ~continent,
+    legendgroup = ~continent,
+    line = list(dash = 'dash'),
+    showlegend = FALSE
+  ) %>%
+  layout(
+    title = 'Observed and Predicted Meteorite Landings by Continent with Polynomial Regression',
+    xaxis = list(title = 'Year'),
+    yaxis = list(title = 'Number of Meteorite Landings')
+  )
+
+line_plot_with_polynomial
+```
+
+
