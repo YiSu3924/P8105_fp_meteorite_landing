@@ -36,6 +36,7 @@ summary(meteorite_data_cleaned)
 ```
 
 # Devided the location based on different continents
+
 ```{r}
 meteorite_sf <- st_as_sf(meteorite_data_cleaned, coords = c("reclong", "reclat"), crs = 4326, remove = FALSE)
 
@@ -52,8 +53,9 @@ print(meteorite_data_with_continents)
 ```
 
 # Make the location based on the map
+
 ```{r}
-continents <- unique(meteorite_data_with_continents$continent)
+continents <- unique(meteorite_data_with_continents %>% pull(continent))
 color_palette <- setNames(brewer.pal(length(continents), "Set1"), continents)
 map <- plot_ly(type = 'scattermapbox', mode = 'markers')
 for (cont in continents) {
@@ -82,6 +84,7 @@ map
 ```
 
 # Line plot based on the year and continents
+
 ```{r}
 yearly_landings <- meteorite_data_with_continents %>%
   st_drop_geometry() %>%
@@ -110,8 +113,9 @@ line_plot_by_continent
 - If the p-value is less than 0.05, consider using Welch’s ANOVA instead, which doesn’t assume equal variances.
 
 ```{r}
-meteorite_data_with_continents$continent <- as.factor(meteorite_data_with_continents$continent)
-# Run Levene's Test with continent as a factor
+meteorite_data_with_continents <- meteorite_data_with_continents %>%
+  mutate(continent = as.factor(continent))
+
 levene_test <- leveneTest(mass ~ continent, data = meteorite_data_with_continents)
 print(levene_test)
 ```
@@ -141,8 +145,6 @@ summary_table <- meteorite_data_with_continents %>%
 ```
 
 ```{r}
-library(dplyr)
-
 area_data <- data.frame(
   continent = c("Africa", "Antarctica", "Asia", "Europe", 
                 "North America", "South America", "Oceania"),
@@ -157,7 +159,8 @@ summary_table <- meteorite_data_with_continents %>%
 
 merged_table <- merge(summary_table, area_data, by = "continent")
 
-merged_table$landings_per_km2 <- merged_table$count / merged_table$area_km2
+merged_table <- merged_table %>%
+  mutate(landings_per_km2 = count / area_km2)
 
 final_table <- merged_table %>%
   select(continent, count, area_km2, landings_per_km2) %>%
@@ -181,13 +184,18 @@ predicted_landings <- yearly_landings %>%
   group_by(continent) %>%
   do({
     model <- lm(count ~ poly(year, 2), data = .)
-    future_data <- future_years
-    future_data$continent <- unique(.$continent)
-    future_data$predicted_count <- predict(model, newdata = future_data)
-    future_data$predicted_count <- pmax(future_data$predicted_count, 0)
+    
+    future_data <- future_years %>%
+      mutate(continent = unique(.$continent))
+    
+    future_data <- future_data %>%
+      mutate(predicted_count = predict(model, newdata = future_data),
+             predicted_count = pmax(predicted_count, 0))
+    
     future_data
   }) %>%
   ungroup()
+
 
 observed_data <- yearly_landings %>%
   rename(observed_count = count)
