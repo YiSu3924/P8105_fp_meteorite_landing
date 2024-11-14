@@ -1,0 +1,98 @@
+---
+title: "final project"
+author: "Zitao Zhang"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(tidyverse)
+library(janitor)
+library(ggplot2)
+library(maps)
+library(plotly)
+library(rnaturalearth)
+library(sf)
+```
+
+```{r}
+meteorite_data <- read.csv("meteorite-landings.csv")
+
+meteorite_data <- meteorite_data %>% 
+  clean_names() %>%
+  filter(year >= 1900 & year <= 2013) %>% 
+  select(-fall)
+
+meteorite_data_cleaned <- meteorite_data %>%
+  filter(!is.na(reclat) & !is.na(reclong)) %>%
+  filter(!is.na(mass) & !is.na(year))
+
+summary(meteorite_data_cleaned)
+```
+
+```{r}
+meteorite_sf <- st_as_sf(meteorite_data_cleaned, coords = c("reclong", "reclat"), crs = 4326, remove = FALSE)
+
+continents <- ne_countries(scale = "medium", returnclass = "sf") %>%
+  group_by(continent) %>%
+  summarise()
+
+meteorite_data_with_continents <- st_join(meteorite_sf, continents["continent"], join = st_intersects)
+
+meteorite_data_with_continents <- meteorite_data_with_continents %>%
+  mutate(continent = replace_na(continent, "Ocean"))
+
+print(meteorite_data_with_continents)
+```
+
+```{r}
+fig <- plot_ly(
+  data = meteorite_data,
+  type = 'scattermapbox',
+  lat = ~reclat,
+  lon = ~reclong,
+  mode = 'markers',
+  marker = list(size = 4, color = 'blue', opacity = 0.5),
+  text = ~paste("Name:", name, "<br>Year:", year, "<br>Mass:", mass)
+)
+
+fig <- fig %>%
+  layout(
+    title = 'Global Distribution of Meteorite Landings (1399-2013)',
+    mapbox = list(
+      style = "carto-positron",
+      zoom = 1
+    )
+  )
+
+fig
+```
+
+```{r}
+yearly_landings <- meteorite_data %>%
+  group_by(year) %>%
+  summarise(count = n())
+
+# Line plot with Plotly
+fig <- plot_ly(
+  data = yearly_landings,
+  x = ~year,
+  y = ~count,
+  type = 'scatter',
+  mode = 'lines',
+  line = list(color = 'blue')
+) %>%
+  layout(
+    title = 'Meteorite Landings Over Time',
+    xaxis = list(title = 'Year'),
+    yaxis = list(title = 'Number of Meteorite Landings')
+  )
+
+fig
+```
+
+
+
+
