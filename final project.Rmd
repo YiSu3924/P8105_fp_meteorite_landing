@@ -4,7 +4,7 @@ author: "Zitao Zhang, Yi Su, Jiayi Ge"
 date: "`r Sys.Date()`"
 output: html_document
 ---
-
+# Load the library
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(dplyr)
@@ -17,12 +17,13 @@ library(rnaturalearth)
 library(sf)
 ```
 
+# Clean the data
 ```{r}
 meteorite_data <- read.csv("data/meteorite-landings.csv")
 
 meteorite_data <- meteorite_data %>% 
   clean_names() %>%
-  filter(year >= 1900 & year <= 2013) %>% 
+  filter(year >= 1970 & year <= 2013) %>% 
   select(-fall)
 
 meteorite_data_cleaned <- meteorite_data %>%
@@ -32,6 +33,7 @@ meteorite_data_cleaned <- meteorite_data %>%
 summary(meteorite_data_cleaned)
 ```
 
+# Devided the location based on different continents
 ```{r}
 meteorite_sf <- st_as_sf(meteorite_data_cleaned, coords = c("reclong", "reclat"), crs = 4326, remove = FALSE)
 
@@ -47,6 +49,7 @@ meteorite_data_with_continents <- meteorite_data_with_continents %>%
 print(meteorite_data_with_continents)
 ```
 
+# Make the location based on the map
 ```{r}
 map <- plot_ly(
   data = meteorite_data,
@@ -68,11 +71,9 @@ map <- map %>%
 map
 ```
 
-
-
+# Line plot based on the year and continents
 ```{r}
 yearly_landings <- meteorite_data_with_continents %>%
-  filter(year > 1960) %>%
   st_drop_geometry() %>%
   group_by(year, continent) %>%
   summarise(count = n(), .groups = 'drop')
@@ -93,5 +94,71 @@ line_plot_by_continent <- plot_ly(
 line_plot_by_continent
 ```
 
+# Welch’s ANOVA test
+- If the p-value from Levene’s Test is greater than 0.05, proceed with a standard ANOVA test.
 
+- If the p-value is less than 0.05, consider using Welch’s ANOVA instead, which doesn’t assume equal variances.
 
+```{r}
+meteorite_data_with_continents$continent <- as.factor(meteorite_data_with_continents$continent)
+# Run Levene's Test with continent as a factor
+library(car)
+levene_test <- leveneTest(mass ~ continent, data = meteorite_data_with_continents)
+print(levene_test)
+```
+The result of Levene’s Test shows a p-value of $1.85 \times 10^{-11}$, which is far below 0.05. This indicates that the variances of mass across different continents are not equal. Given this result, we should proceed with Welch’s ANOVA instead of the standard ANOVA, as Welch’s ANOVA does not assume equal variances.
+
+Null and Alternative Hypotheses 
+$$ H_0: \mu_{\text{Africa}} = \mu_{\text{Asia}} = \mu_{\text{Europe}} = \mu_{\text{North America}} = \mu_{\text{South America}} = \mu_{\text{Oceania}} = \mu_{\text{Antarctica}}$$
+$$H_1: \text{At least one continent has a different mean meteorite mass.}$$
+Rejection Rule: Reject the null hypothesis if the p-value is less than the significance level.
+
+$$\text{Reject } H_0 \text{ if } p\text{-value} < \alpha = 0.05.$$
+
+```{r}
+welch_anova <- oneway.test(mass ~ continent, data = meteorite_data_with_continents, var.equal = FALSE)
+print(welch_anova)
+```
+$$F = 9.2968, \quad \text{df}_1 = 7, \quad \text{df}_2 = 2529, \quad p\text{-value} = 2.062 \times 10^{-11}$$
+
+$$\text{Since } p\text{-value} < 0.05, \text{ we reject } H_0.$$
+Conclusion: There is a statistically significant difference in mean meteorite mass across continents.
+
+```{r}
+summary_table <- meteorite_data_with_continents %>%
+  group_by(continent) %>%   
+  summarize(count = n()) %>%        
+  arrange(continent)
+```
+
+```{r}
+library(dplyr)
+
+area_data <- data.frame(
+  continent = c("Africa", "Antarctica", "Asia", "Europe", 
+                "North America", "South America", "Oceania"),
+  area_km2 = c(29648481, 13720000, 31033131, 22134710, 
+               21330000, 17461112, 8486460)
+)
+
+summary_table <- meteorite_data_with_continents %>%
+  group_by(continent) %>%
+  summarize(count = n()) %>%
+  arrange(continent)
+
+merged_table <- merge(summary_table, area_data, by = "continent")
+
+merged_table$landings_per_km2 <- merged_table$count / merged_table$area_km2
+
+final_table <- merged_table %>%
+  select(continent, count, area_km2, landings_per_km2) %>%
+  knitr::kable(digits = c(0, 0, 0, 6), caption = "Meteorite Landings by Continent")
+
+final_table
+
+```
+
+### Possible Reasons for Differences in Mean Meteorite Mass Across Continents
+Variations in Land Area: Different continents have different land areas, which may affect the probability of meteorites being found and recorded. Larger continents may have more land to catch falling meteorites, resulting in larger finds and potentially heavier meteorites being discovered.
+
+Data Quality and Collection Bias: Differences in meteorite mass across continents may also result from data quality and collection bias. Factors such as population density, exploration frequency, geological and environmental conditions, and scientific interest can all impact the likelihood of discovering and recording meteorites.
