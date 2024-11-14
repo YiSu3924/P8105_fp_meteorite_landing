@@ -15,7 +15,6 @@ library(maps)
 library(plotly)
 library(rnaturalearth)
 library(sf)
-library(webshot2)
 ```
 
 ```{r}
@@ -49,7 +48,7 @@ print(meteorite_data_with_continents)
 ```
 
 ```{r}
-fig <- plot_ly(
+map <- plot_ly(
   data = meteorite_data,
   type = 'scattermapbox',
   lat = ~reclat,
@@ -58,8 +57,7 @@ fig <- plot_ly(
   marker = list(size = 4, color = 'blue', opacity = 0.5),
   text = ~paste("Name:", name, "<br>Year:", year, "<br>Mass:", mass)
 )
-
-fig <- fig %>%
+map <- map %>%
   layout(
     title = 'Global Distribution of Meteorite Landings (1399-2013)',
     mapbox = list(
@@ -67,33 +65,33 @@ fig <- fig %>%
       zoom = 1
     )
   )
-
-fig
+map
 ```
 
-```{r}
-yearly_landings <- meteorite_data %>%
-  group_by(year) %>%
-  summarise(count = n())
 
-# Line plot with Plotly
-fig <- plot_ly(
+
+```{r}
+yearly_landings <- meteorite_data_with_continents %>%
+  filter(year > 1960) %>%
+  st_drop_geometry() %>%
+  group_by(year, continent) %>%
+  summarise(count = n(), .groups = 'drop')
+line_plot_by_continent <- plot_ly(
   data = yearly_landings,
   x = ~year,
   y = ~count,
   type = 'scatter',
   mode = 'lines',
-  line = list(color = 'blue')
+  color = ~continent
 ) %>%
   layout(
-    title = 'Meteorite Landings Over Time',
+    title = 'Meteorite Landings Over Time by Continent',
     xaxis = list(title = 'Year'),
-    yaxis = list(title = 'Number of Meteorite Landings')
+    yaxis = list(title = 'Number of Meteorite Landings'),
+    legend = list(title = list(text = 'Continent'))
   )
-
-fig
+line_plot_by_continent
 ```
-
 
 
 
