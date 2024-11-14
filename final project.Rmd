@@ -2,7 +2,7 @@
 title: "final project"
 author: "Zitao Zhang, Yi Su, Jiayi Ge"
 date: "`r Sys.Date()`"
-output: github_document
+output: html_document
 ---
 
 ```{r setup, include=FALSE}
@@ -15,6 +15,7 @@ library(maps)
 library(plotly)
 library(rnaturalearth)
 library(sf)
+library(webshot2)
 ```
 
 ```{r}
