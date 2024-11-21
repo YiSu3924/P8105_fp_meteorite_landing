@@ -175,10 +175,47 @@ Variations in Land Area: Different continents have different land areas, which m
 
 Data Quality and Collection Bias: Differences in meteorite mass across continents may also result from data quality and collection bias. Factors such as population density, exploration frequency, geological and environmental conditions, and scientific interest can all impact the likelihood of discovering and recording meteorites.
 
-# Simple Linear Regression
+# Prediction
 
 ```{r}
+set.seed(123)
 
+clusters <- kmeans(meteorite_data_cleaned[, c("reclat", "reclong")], centers = 500)
+
+cluster_centers <- data.frame(
+  reclat = clusters$centers[, 1],
+  reclong = clusters$centers[, 2]
+)
+
+set.seed(123)
+predicted_locations <- data.frame(
+  reclat = rnorm(5000, mean = rep(cluster_centers$reclat, each = 10), sd = 1),
+  reclong = rnorm(5000, mean = rep(cluster_centers$reclong, each = 10), sd = 1)
+)
+
+fig <- plot_ly(
+  data = predicted_locations,
+  lat = ~reclat,
+  lon = ~reclong,
+  type = "scattergeo",
+  mode = "markers",
+  marker = list(size = 3, color = "blue", opacity = 0.7),
+  text = ~paste0("Lat: ", round(reclat, 2), "<br>Lon: ", round(reclong, 2))
+) %>%
+  layout(
+    title = "Enhanced Predicted Meteorite Landings",
+    geo = list(
+      showland = TRUE,
+      showcountries = TRUE,
+      projection = list(type = 'natural earth')
+    )
+  )
+
+fig
 ```
+
+
+
+
 
 
