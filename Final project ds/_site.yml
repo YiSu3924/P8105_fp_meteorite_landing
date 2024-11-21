@@ -1,4 +1,4 @@
-name: "Yay internet!"
+name: "Meteorite Landing"
 output_dir: "."
 navbar:
   title: "Home"
@@ -11,8 +11,6 @@ navbar:
       href: data.html
     - text: "Analysis"
       href: analysis.html
-    - icon: fa-envelope fa-lg
-      href: mailto:<you@youremail.com>
     - icon: fa-github fa-lg
       href: https://github.com/YiSu3924/P8105_fp_meteorite_landing.git
 output:
